@@ -12,6 +12,7 @@ import {
 } from '../validations/product.validation';
 import { Product } from '../models/product.model';
 import { User } from '../models/user.model';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -157,6 +158,53 @@ router.post('/',
     });
   })
 );
+
+//çoklu ürünleri yükleme (admin only)
+router.post('/bulk',
+  adminMiddleware,
+  uploadMultiple,
+  handleUploadError,
+  validateBody(z.array(createProductSchema)),  // <-- Burada sadece array
+  asyncHandler(async (req, res) => {
+    const products = req.body; // artık direkt dizi
+
+    const files = req.files as Express.Multer.File[];
+
+    const productsWithImages = products.map((product: any, index: number) => {
+      if (files && files[index]) {
+        product.images = [`/uploads/images/${files[index].filename}`];
+        product.thumbnail = product.images[0];
+      }
+      product.createdBy = req.user!._id;
+      return product;
+    });
+
+    const createdProducts = await Product.insertMany(productsWithImages);
+
+    res.status(201).json({
+      success: true,
+      message: 'Products created successfully',
+      data: {
+        products: createdProducts.map(product => ({
+          id: product._id,
+          name: product.name,
+          price: product.price,
+          category: product.category,
+          brand: product.brand,
+          images: product.images,
+          thumbnail: product.thumbnail,
+          createdBy: {
+            id: product.createdBy._id,
+            firstName: product.createdBy.firstName,
+            lastName: product.createdBy.lastName
+          }
+        }))
+      }
+    });
+  })
+);
+
+
 
 // Update product (admin only)
 router.put('/:id',
