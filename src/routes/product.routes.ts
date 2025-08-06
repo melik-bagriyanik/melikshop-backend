@@ -22,22 +22,22 @@ router.get('/',
   validateQuery(productQuerySchema),
   asyncHandler(async (req, res) => {
     const { 
-      page, 
-      limit, 
+      page = 1, 
+      limit = 10, 
       search, 
       category, 
       brand, 
       minPrice, 
       maxPrice, 
-      sortBy, 
-      sortOrder, 
+      sortBy = 'createdAt', 
+      sortOrder = 'desc', 
       isActive, 
-      isFeatured 
+      isFeatured,
+      isNew // ✅ yeni eklenen parametre
     } = req.query;
 
-    // Build query
     const query: any = { isActive: true };
-    
+
     if (search) {
       query.$text = { $search: search };
     }
@@ -60,17 +60,23 @@ router.get('/',
       query.isFeatured = isFeatured;
     }
 
-    // Build sort object
+    // ✅ Yeni gelen ürünler: son 7 günde eklenenler
+    if (isNew === 'true') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      query.createdAt = { $gte: sevenDaysAgo };
+    }
+
     const sort: any = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    // Execute query
-    const skip = (page - 1) * limit;
+    const skip = (Number(page) - 1) * Number(limit);
+
     const products = await Product.find(query)
       .populate('createdBy', 'firstName lastName')
       .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(Number(limit));
 
     const total = await Product.countDocuments(query);
 
@@ -79,15 +85,16 @@ router.get('/',
       data: {
         products,
         pagination: {
-          page,
-          limit,
+          page: Number(page),
+          limit: Number(limit),
           total,
-          pages: Math.ceil(total / limit)
+          pages: Math.ceil(total / Number(limit))
         }
       }
     });
   })
 );
+
 
 // Get product by ID (public)
 router.get('/:id',

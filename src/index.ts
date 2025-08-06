@@ -26,8 +26,18 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/meliks
 
 // Security middleware
 app.use(helmet());
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: function(origin, callback) {
+    // Eğer origin yoksa (örneğin Postman gibi) izin ver
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
