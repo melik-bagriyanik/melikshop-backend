@@ -15,6 +15,7 @@ import uploadRoutes from './routes/upload.routes';
 // Import middleware
 import { errorHandler } from './middleware/error.middleware';
 import { authMiddleware } from './middleware/auth.middleware';
+import categoryRoutes from './routes/category.routes';
 
 // Load environment variables
 dotenv.config();
@@ -60,6 +61,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/upload', authMiddleware, uploadRoutes);
+app.use('/api/category', categoryRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -164,18 +164,20 @@ router.post('/bulk',
   adminMiddleware,
   uploadMultiple,
   handleUploadError,
-  validateBody(z.array(createProductSchema)),  // <-- Burada sadece array
+  validateBody(z.object({
+    products: z.array(createProductSchema)
+  })),
   asyncHandler(async (req, res) => {
-    const products = req.body; // artık direkt dizi
-
+    const { products } = req.body;
     const files = req.files as Express.Multer.File[];
 
+    // Handle image uploads for each product
     const productsWithImages = products.map((product: any, index: number) => {
       if (files && files[index]) {
         product.images = [`/uploads/images/${files[index].filename}`];
-        product.thumbnail = product.images[0];
+        product.thumbnail = product.images[0]; // Use first image as thumbnail
       }
-      product.createdBy = req.user!._id;
+      product.createdBy = req.user!._id; // Add creator information
       return product;
     });
 
@@ -203,7 +205,6 @@ router.post('/bulk',
     });
   })
 );
-
 
 
 // Update product (admin only)
