@@ -8,6 +8,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     // ignore to allow health routes to respond even if db down
   }
+  // Provide a friendly root response
+  if (req.url === '/' || req.url === '') {
+    return res.status(200).json({ success: true, message: 'MelikShop API', docs: '/api/health' });
+  }
   // Let Express handle the request
   // @ts-ignore - express types differ from vercel types but are compatible at runtime
   return app(req, res);
