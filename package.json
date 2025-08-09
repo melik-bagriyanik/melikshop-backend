@@ -6,7 +6,8 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:vercel": "tsc"
   },
   "keywords": [
     "nodejs",
@@ -19,6 +20,7 @@
   "license": "ISC",
   "description": "MelikShop Backend API with Express.js, TypeScript, and MongoDB",
   "dependencies": {
+    "@vercel/node": "^3.2.20",
     "bcrypt": "^6.0.0",
     "canvas": "^3.1.2",
     "cors": "^2.8.5",

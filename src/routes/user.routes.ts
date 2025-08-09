@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/error.middleware';
 import { adminMiddleware } from '../middleware/auth.middleware';
 import { z } from 'zod';
 import { User } from '../models/user.model';
+import { Order } from '../models/order.model';
 
 const router = Router();
 
@@ -51,14 +52,30 @@ router.get('/',
       .select('-password -emailVerificationToken -passwordResetToken -passwordResetExpires')
       .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    // Compute order counts for users on this page
+    const userIds = users.map((u: any) => u._id);
+    const orderCountsAgg = await Order.aggregate([
+      { $match: { user: { $in: userIds } } },
+      { $group: { _id: '$user', count: { $sum: 1 } } }
+    ]);
+    const userIdToOrderCount = new Map<string, number>(
+      orderCountsAgg.map((it: any) => [String(it._id), it.count])
+    );
+
+    const usersWithOrderCount = users.map((u: any) => ({
+      ...u,
+      orderCount: userIdToOrderCount.get(String(u._id)) || 0
+    }));
 
     const total = await User.countDocuments(query);
 
     res.json({
       success: true,
       data: {
-        users,
+        users: usersWithOrderCount,
         pagination: {
           page,
           limit,
@@ -80,7 +97,8 @@ router.get('/:id',
     const { id } = req.params;
 
     const user = await User.findById(id)
-      .select('-password -emailVerificationToken -passwordResetToken -passwordResetExpires');
+      .select('-password -emailVerificationToken -passwordResetToken -passwordResetExpires')
+      .lean();
 
     if (!user) {
       return res.status(404).json({
@@ -89,10 +107,12 @@ router.get('/:id',
       });
     }
 
+    const orderCount = await Order.countDocuments({ user: user._id });
+
     res.json({
       success: true,
       data: {
-        user
+        user: { ...user, orderCount }
       }
     });
   })

@@ -3,18 +3,27 @@ import path from 'path';
 import fs from 'fs';
 import { Request } from 'express';
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists (serverful). In serverless (Vercel), this is ephemeral.
 const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch {
+  // no-op for serverless
 }
 
 // Configure storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = path.join(uploadsDir, file.fieldname);
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+    try {
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+    } catch {
+      // In serverless, fallback to base uploads dir
+      return cb(null, uploadsDir);
     }
     cb(null, uploadPath);
   },

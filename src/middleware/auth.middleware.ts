@@ -70,24 +70,37 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
 export const adminMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    await authMiddleware(req, res, (err) => {
-      if (err) return next(err);
+    // Run base auth and stop if it already handled the response
+    await new Promise<void>((resolve, reject) => {
+      (authMiddleware as any)(req, res, (err?: any) => {
+        if (err) return reject(err);
+        return resolve();
+      });
     });
 
-    if (req.user?.role !== 'admin') {
-      res.status(403).json({
-        success: false,
-        message: 'Access denied. Admin privileges required.',
-      });
+    if (res.headersSent || !req.user) {
+      // authMiddleware already responded (e.g., 401) or no user set
       return;
     }
 
-    next();
+    if (req.user.role !== 'admin') {
+      if (!res.headersSent) {
+        res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.',
+        });
+      }
+      return;
+    }
+
+    return next();
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error.',
-    });
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error.',
+      });
+    }
   }
 };
 

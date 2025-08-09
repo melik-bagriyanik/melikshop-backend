@@ -7,12 +7,14 @@ import mongoose from 'mongoose';
 import path from 'path';
 import { sanitizeInputs } from './middleware/sanitize.middleware';
 import { enforceHttps } from './middleware/security.middleware';
+import { connectDB } from './utils/db';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import productRoutes from './routes/product.routes';
 import uploadRoutes from './routes/upload.routes';
+import adminRoutes from './routes/admin.routes';
 
 // Import middleware
 import { errorHandler } from './middleware/error.middleware';
@@ -33,7 +35,13 @@ app.use(helmet({
 }));
 app.set('trust proxy', 1);
 app.use(enforceHttps);
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
+const defaultAllowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://melik-shop.vercel.app'
+];
+const envAllowed = process.env.CORS_ORIGINS?.split(',').map(s => s.trim()).filter(Boolean) || [];
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowed]));
 
 app.use(cors({
   origin: function(origin, callback) {
@@ -45,7 +53,9 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET','HEAD','PUT','PATCH','POST','DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Rate limiting
@@ -82,6 +92,7 @@ app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/upload', authMiddleware, uploadRoutes);
 app.use('/api/category', categoryRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -91,23 +102,15 @@ app.use('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server first, then try to connect to database
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  
-
-   console.log('🔌 Trying to connect to MongoDB...');
-   console.log(`MongoDB URI: ${MONGODB_URI}`);
-  // Try to connect to MongoDB
- mongoose.connect(MONGODB_URI)
-    .then(() => {
-      console.log('✅ Connected to MongoDB');
-    })
-    .catch((error) => {
-      console.error('❌ MongoDB connection error:', error.message);
+// In serverful environments start the server and connect once
+if (!process.env['VERCEL']) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+    connectDB().catch(() => {
       console.log('⚠️ Server is running without database connection. Some features may not work.');
     });
-});
+  });
+}
 
 export default app; 
