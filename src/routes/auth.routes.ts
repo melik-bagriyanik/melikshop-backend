@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { validateBody } from '../middleware/validation.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
 import { authMiddleware } from '../middleware/auth.middleware';
@@ -18,6 +19,18 @@ import { User } from '../models/user.model';
 import crypto from 'crypto';
 
 const router = Router();
+
+// Per-IP rate limiter for auth endpoints (protect against brute force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many attempts, please try again later.'
+  }
+});
 
 // Register new user
 router.post('/register', 
@@ -80,6 +93,7 @@ router.post('/register',
 
 // Login user
 router.post('/login',
+  authLimiter,
   validateBody(loginSchema),
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;

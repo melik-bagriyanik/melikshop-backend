@@ -5,6 +5,8 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import path from 'path';
+import { sanitizeInputs } from './middleware/sanitize.middleware';
+import { enforceHttps } from './middleware/security.middleware';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -21,11 +23,16 @@ import categoryRoutes from './routes/category.routes';
 dotenv.config();
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/melikshop';
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+app.set('trust proxy', 1);
+app.use(enforceHttps);
 const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
 
 app.use(cors({
@@ -52,6 +59,9 @@ app.use('/api/', limiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Global input sanitization (protect against basic XSS)
+app.use(sanitizeInputs);
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

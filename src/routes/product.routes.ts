@@ -33,7 +33,8 @@ router.get('/',
       sortOrder = 'desc', 
       isActive, 
       isFeatured,
-      isNew // ✅ yeni eklenen parametre
+      isNew, //yeni gelen ürünler için
+      isPopular //popüler ürünler için
     } = req.query;
 
     const query: any = { isActive: true };
@@ -67,8 +68,18 @@ router.get('/',
       query.createdAt = { $gte: sevenDaysAgo };
     }
 
+ 
+ 
     const sort: any = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+ // ✅ Popüler ürünler: 10+ yorum ve rating 4+
+    if (isPopular === 'true') {
+      query.reviewCount = { $gte: 10 };
+      query.rating = { $gte: 4 };
+      sort.rating = -1;           
+      sort.reviewCount = -1;      
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
 
